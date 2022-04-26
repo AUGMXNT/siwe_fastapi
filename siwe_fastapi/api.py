@@ -2,38 +2,20 @@
 
 import os
 from starlette.middleware.sessions import SessionMiddleware
-from fastapi import FastAPI, responses, Response, status, Body, Request
+from fastapi import FastAPI, APIRouter, responses, Response, status, Body, Request
 from siwe import siwe
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+router = APIRouter()
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.environ.get("SESSION_SECRET_KEY", "change_me")
-)
-
-
-@app.get("/nonce", response_class=responses.PlainTextResponse)
+@router.get("/nonce", response_class=responses.PlainTextResponse)
 def siwe_nonce(request: Request):
     nonce = siwe.generate_nonce()
     request.session["nonce"] = nonce
     return nonce
 
 
-@app.post("/verify")
+@router.post("/verify")
 def siwe_verify(request: Request, response: Response, message: str = Body(...), signature: str = Body(...)):
     if not message:
         response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -62,13 +44,33 @@ def siwe_verify(request: Request, response: Response, message: str = Body(...), 
         return {"message": f"Unknown error: {err}"}
 
 
-@app.get("/personal_information", response_class=responses.PlainTextResponse)
+@router.get("/personal_information", response_class=responses.PlainTextResponse)
 def siwe_personal_information(request: Request, response: Response):
     if not request.session.get("siwe", None):
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message": "You have to sign in first."}
 
     return f"""You are authenticated and your address is: {request.session["siwe"]["address"]}"""
+
+
+app = FastAPI()
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get("SESSION_SECRET_KEY", "change_me")
+)
+app.include_router(router)
 
 
 if __name__ == "__main__":

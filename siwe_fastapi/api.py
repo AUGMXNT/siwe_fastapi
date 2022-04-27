@@ -53,6 +53,11 @@ def siwe_personal_information(request: Request, response: Response):
     return f"""You are authenticated and your address is: {request.session["siwe"]["address"]}"""
 
 
+@router.post("/signout")
+def siwe_signout(request: Request):
+    request.session.clear()
+
+
 app = FastAPI()
 origins = [
     "http://localhost",

@@ -56,6 +56,7 @@ def siwe_personal_information(request: Request, response: Response):
 @router.post("/signout")
 def siwe_signout(request: Request):
     request.session.clear()
+    return {}
 
 
 app = FastAPI()
